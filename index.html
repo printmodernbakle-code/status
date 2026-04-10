@@ -1,0 +1,584 @@
+<!doctype html>
+<html lang="en" data-overall="loading">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>System Status</title>
+  <meta name="description" content="Live service availability and uptime.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300..700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #f6f2e8;
+      --card: #fbf8f0;
+      --ink: #1a1915;
+      --ink-2: #403b32;
+      --ink-dim: #7a7465;
+      --ink-faint: #c9c3b2;
+      --line: rgba(26, 25, 21, 0.10);
+      --line-soft: rgba(26, 25, 21, 0.06);
+      --ok: #1a7a4c;
+      --ok-soft: #d9ebdf;
+      --down: #b8311a;
+      --down-soft: #f3dad3;
+      --warn: #a06800;
+      --warn-soft: #f2e1c1;
+
+      --font-serif: "Fraunces", "Times New Roman", Georgia, serif;
+      --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      background: var(--bg);
+      color: var(--ink);
+      font-family: var(--font-serif);
+      font-size: 15px;
+      line-height: 1.55;
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+      text-rendering: optimizeLegibility;
+      font-variation-settings: "opsz" 14;
+    }
+
+    body {
+      background:
+        radial-gradient(1100px 550px at 90% -10%, rgba(26, 122, 76, 0.06), transparent 60%),
+        radial-gradient(900px 500px at -10% 110%, rgba(184, 49, 26, 0.04), transparent 60%),
+        var(--bg);
+    }
+
+    .shell {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 40px 32px 48px;
+    }
+
+    @media (max-width: 640px) {
+      .shell { padding: 28px 20px 40px; }
+    }
+
+    /* top bar */
+    .top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding-bottom: 20px;
+      border-bottom: 1px solid var(--line);
+      margin-bottom: 72px;
+    }
+
+    @media (max-width: 640px) {
+      .top { margin-bottom: 48px; }
+    }
+
+    .brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      letter-spacing: 0.22em;
+      color: var(--ink-2);
+      text-transform: uppercase;
+    }
+
+    .brand-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--ink);
+    }
+
+    .top-meta {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      letter-spacing: 0.15em;
+      color: var(--ink-dim);
+      text-transform: uppercase;
+    }
+
+    /* hero */
+    .hero {
+      margin-bottom: 80px;
+      max-width: 760px;
+    }
+
+    @media (max-width: 640px) {
+      .hero { margin-bottom: 56px; }
+    }
+
+    .hero-eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      letter-spacing: 0.2em;
+      color: var(--ink-dim);
+      text-transform: uppercase;
+      margin-bottom: 32px;
+    }
+
+    .live-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--ok);
+      position: relative;
+    }
+    .live-dot::after {
+      content: "";
+      position: absolute; inset: -3px;
+      border-radius: 50%;
+      border: 1.5px solid var(--ok);
+      animation: ping 2s cubic-bezier(0, 0, .2, 1) infinite;
+    }
+    @keyframes ping {
+      0% { transform: scale(0.9); opacity: 1; }
+      80%, 100% { transform: scale(2.2); opacity: 0; }
+    }
+
+    .hero-title {
+      font-family: var(--font-serif);
+      font-weight: 400;
+      font-size: clamp(40px, 7.5vw, 84px);
+      line-height: 1.02;
+      letter-spacing: -0.025em;
+      font-variation-settings: "opsz" 144;
+      color: var(--ink);
+      margin-bottom: 24px;
+      opacity: 0;
+      transform: translateY(12px);
+      animation: fade-up 0.9s cubic-bezier(.2, .8, .2, 1) 0.1s forwards;
+    }
+
+    [data-overall="operational"] .hero-title { color: var(--ok); }
+    [data-overall="down"] .hero-title,
+    [data-overall="error"] .hero-title { color: var(--down); }
+    [data-overall="degraded"] .hero-title { color: var(--warn); }
+
+    .hero-sub {
+      max-width: 52ch;
+      color: var(--ink-2);
+      font-size: 17px;
+      line-height: 1.6;
+      opacity: 0;
+      animation: fade-up 0.9s cubic-bezier(.2, .8, .2, 1) 0.25s forwards;
+    }
+
+    @media (max-width: 640px) {
+      .hero-sub { font-size: 15px; }
+    }
+
+    @keyframes fade-up {
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* services */
+    .services {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .service {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 28px 28px 24px;
+      opacity: 0;
+      transform: translateY(8px);
+      animation: fade-up 0.8s cubic-bezier(.2, .8, .2, 1) forwards;
+    }
+    .service:nth-child(1) { animation-delay: 0.4s; }
+    .service:nth-child(2) { animation-delay: 0.5s; }
+    .service:nth-child(3) { animation-delay: 0.6s; }
+    .service:nth-child(4) { animation-delay: 0.7s; }
+    .service:nth-child(n+5) { animation-delay: 0.8s; }
+
+    @media (max-width: 640px) {
+      .service { padding: 22px 20px 20px; border-radius: 12px; }
+    }
+
+    .service-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .service-name {
+      font-family: var(--font-serif);
+      font-weight: 400;
+      font-size: 26px;
+      line-height: 1.1;
+      letter-spacing: -0.015em;
+      font-variation-settings: "opsz" 48;
+      color: var(--ink);
+    }
+
+    @media (max-width: 640px) {
+      .service-name { font-size: 22px; }
+    }
+
+    .service-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      font-family: var(--font-mono);
+      font-size: 10px;
+      font-weight: 500;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      padding: 6px 11px;
+      border-radius: 999px;
+      background: rgba(26, 25, 21, 0.06);
+      color: var(--ink-dim);
+      white-space: nowrap;
+    }
+    .service-pill .dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: currentColor;
+    }
+    .service[data-status="operational"] .service-pill {
+      background: var(--ok-soft);
+      color: var(--ok);
+    }
+    .service[data-status="down"] .service-pill {
+      background: var(--down-soft);
+      color: var(--down);
+    }
+
+    /* history bars */
+    .history {
+      display: flex;
+      align-items: flex-end;
+      gap: 3px;
+      height: 52px;
+      margin-bottom: 12px;
+    }
+
+    @media (max-width: 640px) {
+      .history { height: 44px; gap: 2px; }
+    }
+
+    .bar {
+      flex: 1;
+      min-width: 0;
+      background: var(--ink-faint);
+      border-radius: 2px;
+      min-height: 4px;
+      transform-origin: bottom;
+      transform: scaleY(0);
+      animation: grow 0.6s cubic-bezier(.2, .8, .2, 1) forwards;
+      animation-delay: calc(0.55s + var(--i) * 0.006s);
+      position: relative;
+      cursor: pointer;
+      transition: filter 0.15s ease;
+    }
+    @keyframes grow { to { transform: scaleY(1); } }
+
+    .bar-ok { background: var(--ok); }
+    .bar-down { background: var(--down); }
+    .bar-empty { background: var(--line); }
+
+    .bar:hover { filter: brightness(1.15); }
+    .bar:hover::after {
+      content: attr(data-tip);
+      position: absolute;
+      bottom: calc(100% + 10px);
+      left: 50%;
+      transform: translateX(-50%);
+      white-space: nowrap;
+      background: var(--ink);
+      color: var(--bg);
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 0.04em;
+      padding: 6px 9px;
+      border-radius: 6px;
+      z-index: 10;
+      pointer-events: none;
+    }
+
+    .history-axis {
+      display: flex;
+      justify-content: space-between;
+      font-family: var(--font-mono);
+      font-size: 9px;
+      letter-spacing: 0.14em;
+      color: var(--ink-dim);
+      text-transform: uppercase;
+      padding-bottom: 20px;
+      margin-bottom: 20px;
+      border-bottom: 1px dashed var(--line);
+    }
+
+    /* stats */
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 24px;
+    }
+
+    @media (max-width: 640px) {
+      .stats { gap: 16px; }
+    }
+
+    @media (max-width: 420px) {
+      .stats { grid-template-columns: repeat(3, 1fr); gap: 12px; }
+    }
+
+    .stat { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+
+    .stat-label {
+      font-family: var(--font-mono);
+      font-size: 9px;
+      letter-spacing: 0.16em;
+      color: var(--ink-dim);
+      text-transform: uppercase;
+    }
+
+    .stat-val {
+      font-family: var(--font-serif);
+      font-variation-settings: "opsz" 48;
+      font-size: 22px;
+      color: var(--ink);
+      line-height: 1.1;
+      letter-spacing: -0.01em;
+    }
+
+    @media (max-width: 640px) {
+      .stat-val { font-size: 18px; }
+    }
+
+    @media (max-width: 420px) {
+      .stat-val { font-size: 16px; }
+    }
+
+    /* empty / error state */
+    .empty {
+      padding: 40px 24px;
+      text-align: center;
+      color: var(--ink-dim);
+      border: 1px dashed var(--line);
+      border-radius: 12px;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      line-height: 1.7;
+    }
+
+    /* footer */
+    .foot {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      margin-top: 72px;
+      padding-top: 24px;
+      border-top: 1px solid var(--line);
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 0.16em;
+      color: var(--ink-dim);
+      text-transform: uppercase;
+    }
+
+    @media (max-width: 640px) {
+      .foot { margin-top: 48px; flex-direction: column; align-items: flex-start; gap: 8px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header class="top">
+      <div class="brand">
+        <span class="brand-dot"></span>
+        <span>Status</span>
+      </div>
+      <div class="top-meta" id="updated">—</div>
+    </header>
+
+    <section class="hero">
+      <p class="hero-eyebrow"><span class="live-dot"></span> Live monitoring</p>
+      <h1 class="hero-title" id="heroTitle">Checking telemetry…</h1>
+      <p class="hero-sub">Automated health checks run on a continuous heartbeat. This page reflects the most recent sixty readings for every service we monitor.</p>
+    </section>
+
+    <section class="services" id="services">
+      <div class="empty">Loading readings…</div>
+    </section>
+
+    <footer class="foot">
+      <span>Auto-refreshes every 60 seconds</span>
+      <span>&copy; <span id="year"></span></span>
+    </footer>
+  </main>
+
+  <script>
+    // Paste your deployed Apps Script web app /exec URL here.
+    const API_URL = "https://script.google.com/macros/s/AKfycbyvVVlmZcP2TOpMJHs3C0GLYysvfbm6T5aVtkQOL0cfSI57IKuiAjw8tKuF7x7-eO02/exec";
+
+    const HEADLINES = {
+      operational: "All systems operational.",
+      degraded:    "Partial service disruption.",
+      down:        "Major service outage.",
+      unknown:     "Awaiting first signal.",
+      loading:     "Checking telemetry…",
+      error:       "Signal lost. Retrying…"
+    };
+
+    const STATE_LABELS = {
+      operational: "Operational",
+      down: "Down",
+      degraded: "Degraded",
+      unknown: "Unknown"
+    };
+
+    const $ = id => document.getElementById(id);
+
+    function escapeHtml(s) {
+      return String(s).replace(/[&<>"']/g, c => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+      }[c]));
+    }
+
+    function formatTime(iso) {
+      if (!iso) return "—";
+      const d = new Date(iso);
+      if (isNaN(d)) return "—";
+      const pad = n => String(n).padStart(2, "0");
+      return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    }
+
+    function relativeTime(iso) {
+      if (!iso) return "—";
+      const d = new Date(iso);
+      if (isNaN(d)) return "—";
+      const diff = Math.max(0, Math.floor((Date.now() - d.getTime()) / 1000));
+      if (diff < 60) return diff + "s ago";
+      if (diff < 3600) return Math.floor(diff / 60) + "m ago";
+      if (diff < 86400) return Math.floor(diff / 3600) + "h ago";
+      return Math.floor(diff / 86400) + "d ago";
+    }
+
+    function setOverall(state) {
+      document.documentElement.dataset.overall = state;
+      $("heroTitle").textContent = HEADLINES[state] || HEADLINES.unknown;
+    }
+
+    function showError(msg) {
+      setOverall("error");
+      $("services").innerHTML = `<div class="empty">Signal lost · ${escapeHtml(msg)}</div>`;
+      $("updated").textContent = "—";
+    }
+
+    function render(data) {
+      setOverall(data.overall || "unknown");
+      $("updated").textContent = "Updated " + formatTime(data.updatedAt);
+
+      const host = $("services");
+      host.innerHTML = "";
+
+      if (!data.services || data.services.length === 0) {
+        host.innerHTML = `<div class="empty">No services configured yet. Add a row to the Config sheet to start monitoring.</div>`;
+        return;
+      }
+
+      data.services.forEach(s => host.appendChild(serviceCard(s)));
+    }
+
+    function serviceCard(s) {
+      const el = document.createElement("article");
+      el.className = "service";
+      el.dataset.status = s.currentStatus || "unknown";
+
+      const history = [...(s.history || [])].reverse(); // oldest → newest
+      const rtValues = history
+        .filter(h => h && typeof h.responseTime === "number")
+        .map(h => h.responseTime);
+      const maxRt = rtValues.length ? Math.max(...rtValues, 1) : 1;
+
+      const SLOTS = 60;
+      const padding = Math.max(0, SLOTS - history.length);
+      const bars = [];
+      for (let i = 0; i < SLOTS; i++) {
+        if (i < padding) {
+          bars.push(`<span class="bar bar-empty" style="--i:${i};height:18%"></span>`);
+          continue;
+        }
+        const h = history[i - padding];
+        if (!h) {
+          bars.push(`<span class="bar bar-empty" style="--i:${i};height:18%"></span>`);
+          continue;
+        }
+        const height = h.ok
+          ? Math.min(100, 40 + ((h.responseTime || 0) / maxRt) * 60)
+          : 100;
+        const cls = h.ok ? "bar-ok" : "bar-down";
+        const tipBits = [h.status];
+        if (typeof h.responseTime === "number") tipBits.push(h.responseTime + "ms");
+        tipBits.push(formatTime(h.timestamp));
+        const tip = tipBits.join(" · ");
+        bars.push(`<span class="bar ${cls}" style="--i:${i};height:${height}%" data-tip="${escapeHtml(tip)}"></span>`);
+      }
+
+      const uptime = s.uptime != null ? s.uptime.toFixed(2) + "%" : "—";
+      const rt = s.avgResponseTime != null ? s.avgResponseTime + " ms" : "—";
+      const last = s.lastCheck ? relativeTime(s.lastCheck) : "—";
+      const label = STATE_LABELS[s.currentStatus] || "Unknown";
+
+      el.innerHTML = `
+        <div class="service-head">
+          <h2 class="service-name">${escapeHtml(s.name)}</h2>
+          <span class="service-pill"><span class="dot"></span>${label}</span>
+        </div>
+        <div class="history">${bars.join("")}</div>
+        <div class="history-axis">
+          <span>60 checks ago</span>
+          <span>now</span>
+        </div>
+        <div class="stats">
+          <div class="stat">
+            <span class="stat-label">Uptime</span>
+            <span class="stat-val">${uptime}</span>
+          </div>
+          <div class="stat">
+            <span class="stat-label">Avg Response</span>
+            <span class="stat-val">${rt}</span>
+          </div>
+          <div class="stat">
+            <span class="stat-label">Last Check</span>
+            <span class="stat-val">${last}</span>
+          </div>
+        </div>
+      `;
+      return el;
+    }
+
+    async function load() {
+      if (!API_URL) {
+        showError("API_URL not set. Paste your Apps Script /exec URL in index.html.");
+        return;
+      }
+      try {
+        const res = await fetch(API_URL, { cache: "no-store", redirect: "follow" });
+        if (!res.ok) throw new Error("HTTP " + res.status);
+        const data = await res.json();
+        render(data);
+      } catch (e) {
+        showError(e.message || "Fetch failed");
+      }
+    }
+
+    $("year").textContent = new Date().getFullYear();
+    load();
+    setInterval(load, 60000);
+  </script>
+</body>
+</html>
